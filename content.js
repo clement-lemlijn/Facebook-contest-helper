@@ -56,14 +56,10 @@ function insertTextLexical(el, text) {
     el.dispatchEvent(event);
 }
 
-// --- CIBLAGE INTELLIGENT ---
-
 async function getCommentBox() {
     const textboxes = Array.from(document.querySelectorAll('div[role="textbox"][contenteditable="true"]'));
     if (textboxes.length === 0) return null;
-
     const midScreen = window.innerHeight / 2;
-
     let target = textboxes.reduce((prev, curr) => {
         const prevRect = prev.getBoundingClientRect();
         const currRect = curr.getBoundingClientRect();
@@ -71,7 +67,6 @@ async function getCommentBox() {
         const currDist = Math.abs((currRect.top + currRect.height / 2) - midScreen);
         return (currDist < prevDist) ? curr : prev;
     });
-
     if (target) {
         target.scrollIntoView({ behavior: 'smooth', block: 'center' });
         await wait(500);
@@ -115,7 +110,6 @@ async function lancerAssistant(nbAmisParCom, vitesse, nbATaguer) {
 
         if (inputBox) {
             logStatus(`✍️ Écriture : <br><small>${groupe.join(', ')}</small>`, "#2ecc71");
-
             for (let ami of groupe) {
                 if (!isRunning) return;
                 insertTextLexical(inputBox, `@${ami}`);
@@ -123,11 +117,9 @@ async function lancerAssistant(nbAmisParCom, vitesse, nbATaguer) {
                 inputBox.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
                 await wait(pause3);
             }
-
             inputBox.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
             totalEnvoyes++;
             majCompteur(totalEnvoyes);
-
             let pauseMs = Math.floor(Math.random() * (maxWait - minWait) + minWait);
             for(let p = Math.floor(pauseMs/1000); p > 0; p--) {
                 if (!isRunning || isPaused) break;
@@ -141,7 +133,6 @@ async function lancerAssistant(nbAmisParCom, vitesse, nbATaguer) {
             return;
         }
     }
-
     logStatus("🏁 Terminé !", "#27ae60");
     isRunning = false; currentIndex = 0; updateButtonState("start");
 }
@@ -151,10 +142,13 @@ async function lancerAssistant(nbAmisParCom, vitesse, nbATaguer) {
 if (!document.getElementById("helper-container")) {
     const container = document.createElement("div");
     container.id = "helper-container";
-    container.style = "position:fixed; top:80px; left:20px; z-index:10000; padding:15px; background:#ffffff !important; border:2px solid #1877F2; border-radius:10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); font-family: Arial, sans-serif; display: flex; flex-direction: column; gap: 8px; width: 230px; color: #000000 !important; box-sizing: border-box;";
+    container.style = "position:fixed; top:80px; left:20px; z-index:10000; padding:15px; background:#ffffff !important; border:2px solid #1877F2; border-radius:12px; box-shadow: 0 8px 30px rgba(0,0,0,0.3); font-family: Arial, sans-serif; display: flex; flex-direction: column; gap: 8px; width: 240px; color: #000000 !important; box-sizing: border-box; transition: transform 0.3s ease, opacity 0.3s ease;";
 
     container.innerHTML = `
-        <div style="font-weight:bold; color:#1877F2 !important; text-align:center; margin-bottom:5px; font-size:14px;">FB Contest Helper 🏆</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+            <div style="font-weight:bold; color:#1877F2 !important; font-size:14px;">FB Contest Helper 🏆</div>
+            <button id="minimizeBtn" style="background:#f0f2f5; border:none; border-radius:50%; width:24px; height:24px; cursor:pointer; color:#666; font-weight:bold; display:flex; align-items:center; justify-content:center;">_</button>
+        </div>
         <div id="statusBox" style="background:#f8f9fa; border:1px solid #ddd; padding:10px; border-radius:8px; min-height:60px; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; box-sizing: border-box;">
             <div id="logConsole" style="font-size:11px; font-weight:bold; line-height:1.3; color:#333;">Prêt</div>
             <div id="comCount" style="font-size:10px; margin-top:5px; color:#666;">Commentaires : 0</div>
@@ -185,13 +179,44 @@ if (!document.getElementById("helper-container")) {
         <button id="startHelper" style="padding:10px; background:#1877F2 !important; color:white !important; border:none; border-radius:5px; cursor:pointer; font-weight:bold; margin-top:5px; width:100%; box-sizing: border-box;">LANCER</button>
         <button id="stopHelper" style="display:none; padding:8px; background:#e74c3c !important; color:white !important; border:none; border-radius:5px; cursor:pointer; font-weight:bold; width:100%; box-sizing: border-box;">⏹ ARRÊTER</button>
         
-        <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #eee; text-align: center; font-size: 9px; color: #999; font-style: italic;">
-            &copy; 2026 Lemlijn Clément
+        <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed #eee; text-align: center; font-size: 10px; color: #bbb;">
+            <span style="color: #1877F2;">⚡</span> Crafted by <b>Lemlijn Clément</b>
         </div>
     `;
 
+    // Création du bouton dans la barre de menu Facebook
+    const fbBarBtn = document.createElement("div");
+    fbBarBtn.id = "fb-bar-helper-btn";
+    // Positionné à droite près des icônes Messenger/Notifs
+    fbBarBtn.style = "position:fixed; top:8px; right:200px; z-index:10001; background:#e4e6eb; width:36px; height:36px; border-radius:50%; display:none; align-items:center; justify-content:center; cursor:pointer; font-size:18px; transition: background 0.2s;";
+    fbBarBtn.innerHTML = "🏆";
+    fbBarBtn.title = "Ouvrir Assistant Concours";
+    fbBarBtn.onmouseover = () => fbBarBtn.style.background = "#d8dadf";
+    fbBarBtn.onmouseout = () => fbBarBtn.style.background = "#e4e6eb";
+
     document.body.appendChild(container);
-    chargerListeInitiale();
+    document.body.appendChild(fbBarBtn);
+    chargerListeInitial(fbBarBtn);
+
+    // --- EVENEMENTS INTERFACE ---
+
+    document.getElementById("minimizeBtn").onclick = () => {
+        container.style.transform = "scale(0.8) translateY(-20px)";
+        container.style.opacity = "0";
+        setTimeout(() => {
+            container.style.display = "none";
+            fbBarBtn.style.display = "flex";
+        }, 300);
+    };
+
+    fbBarBtn.onclick = () => {
+        fbBarBtn.style.display = "none";
+        container.style.display = "flex";
+        setTimeout(() => {
+            container.style.transform = "scale(1) translateY(0)";
+            container.style.opacity = "1";
+        }, 10);
+    };
 
     document.getElementById("sliderAmis").oninput = function() {
         document.getElementById("labelSlider").innerHTML = `${this.value} / ${listeAmisTotale.length}`;
@@ -201,16 +226,13 @@ if (!document.getElementById("helper-container")) {
     document.getElementById("fileInput").onchange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
-
-        // MISE À JOUR DU TEXTE DU BOUTON
         const btn = document.getElementById("btnUpload");
         btn.innerHTML = `📄 ${file.name}`;
-        btn.style.borderStyle = "solid"; // Change le pointillé en ligne pleine pour valider l'action
-        btn.style.background = "#e7f3ff !important"; // Un léger bleu pour confirmer
-
+        btn.style.borderStyle = "solid";
+        btn.style.background = "#e7f3ff !important";
         const reader = new FileReader();
-        reader.onload = (e) => {
-            const liste = e.target.result.split(/[\n\r]+/).map(n => n.trim()).filter(n => n);
+        reader.onload = (ev) => {
+            const liste = ev.target.result.split(/[\n\r]+/).map(n => n.trim()).filter(n => n);
             chrome.storage.local.set({ maListeSauvegardee: liste }, () => {
                 listeAmisTotale = liste;
                 const slider = document.getElementById("sliderAmis");
@@ -254,15 +276,16 @@ function updateButtonState(state) {
     }
 }
 
-function chargerListeInitiale() {
+function chargerListeInitial(barBtn) {
     chrome.storage.local.get(['maListeSauvegardee'], (result) => {
         if (result.maListeSauvegardee) {
             listeAmisTotale = result.maListeSauvegardee;
+            const btn = document.getElementById("btnUpload");
+            btn.innerHTML = `📄 Liste chargée (${listeAmisTotale.length})`;
             const slider = document.getElementById("sliderAmis");
             slider.max = listeAmisTotale.length;
             slider.value = Math.floor((listeAmisTotale.length * 2) / 3);
             document.getElementById("labelSlider").innerHTML = `${slider.value} / ${listeAmisTotale.length}`;
-            logStatus("✅ Liste prête.");
         }
     });
 }
