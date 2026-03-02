@@ -114,7 +114,7 @@ async function lancerAssistant(nbAmisParCom, vitesse, nbATaguer) {
                 if (!isRunning) return;
                 insertTextLexical(inputBox, `@${ami}`);
                 await wait(pause1);
-                inputBox.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+                inputBox.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
                 await wait(pause3);
             }
             inputBox.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
