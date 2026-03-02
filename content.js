@@ -154,7 +154,12 @@ if (!document.getElementById("helper-container")) {
             <div id="comCount" style="font-size:10px; margin-top:5px; color:#666;">Commentaires : 0</div>
         </div>
         <input type="file" id="fileInput" accept=".txt" style="display:none;">
-        <button id="btnUpload" style="padding:8px; font-size:11px; cursor:pointer; background:#f0f2f5 !important; border:1px dashed #1877F2; border-radius:5px; color: #000 !important; width: 100%; font-weight: bold; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">📁 Charger Liste (.txt)</button>
+        
+        <div id="uploadContainer" style="display:flex; align-items:center; gap:5px; width:100%;">
+            <button id="btnUpload" style="flex-grow:1; padding:8px; font-size:11px; cursor:pointer; background:#f0f2f5 !important; border:1px dashed #1877F2; border-radius:5px; color: #000 !important; font-weight: bold; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">📁 Charger Liste (.txt)</button>
+            <button id="clearList" style="display:none; padding:8px; background:#ffdce0; border:1px solid #ff4d4f; border-radius:5px; color:#ff4d4f; cursor:pointer; font-weight:bold; font-size:11px;">✕</button>
+        </div>
+
         <hr style="border:0; border-top:1px solid #ccc; margin:5px 0;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <label style="font-size:11px; font-weight:bold;">Taguer :</label>
@@ -179,15 +184,13 @@ if (!document.getElementById("helper-container")) {
         <button id="startHelper" style="padding:10px; background:#1877F2 !important; color:white !important; border:none; border-radius:5px; cursor:pointer; font-weight:bold; margin-top:5px; width:100%; box-sizing: border-box;">LANCER</button>
         <button id="stopHelper" style="display:none; padding:8px; background:#e74c3c !important; color:white !important; border:none; border-radius:5px; cursor:pointer; font-weight:bold; width:100%; box-sizing: border-box;">⏹ ARRÊTER</button>
         
-        <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed #eee; text-align: center; font-size: 10px; color: #bbb;">
-            <span style="color: #1877F2;">⚡</span> Crafted by <b>Lemlijn Clément</b>
+        <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #eee; text-align: center; font-size: 9px; color: #999; font-style: italic;">
+            &copy; 2026 Lemlijn Clément
         </div>
     `;
 
-    // Création du bouton dans la barre de menu Facebook
     const fbBarBtn = document.createElement("div");
     fbBarBtn.id = "fb-bar-helper-btn";
-    // Positionné à droite près des icônes Messenger/Notifs
     fbBarBtn.style = "position:fixed; top:8px; right:200px; z-index:10001; background:#e4e6eb; width:36px; height:36px; border-radius:50%; display:none; align-items:center; justify-content:center; cursor:pointer; font-size:18px; transition: background 0.2s;";
     fbBarBtn.innerHTML = "🏆";
     fbBarBtn.title = "Ouvrir Assistant Concours";
@@ -196,9 +199,9 @@ if (!document.getElementById("helper-container")) {
 
     document.body.appendChild(container);
     document.body.appendChild(fbBarBtn);
-    chargerListeInitial(fbBarBtn);
+    chargerListeInitial();
 
-    // --- EVENEMENTS INTERFACE ---
+    // --- EVENEMENTS ---
 
     document.getElementById("minimizeBtn").onclick = () => {
         container.style.transform = "scale(0.8) translateY(-20px)";
@@ -223,17 +226,39 @@ if (!document.getElementById("helper-container")) {
     };
 
     document.getElementById("btnUpload").onclick = () => document.getElementById("fileInput").click();
+
+    // SUPPRIMER LA LISTE
+    document.getElementById("clearList").onclick = () => {
+        chrome.storage.local.remove('maListeSauvegardee', () => {
+            listeAmisTotale = [];
+            const btn = document.getElementById("btnUpload");
+            btn.innerHTML = `📁 Charger Liste (.txt)`;
+            btn.style.borderStyle = "dashed";
+            btn.style.background = "#f0f2f5 !important";
+            document.getElementById("clearList").style.display = "none";
+
+            const slider = document.getElementById("sliderAmis");
+            slider.max = 100;
+            slider.value = 0;
+            document.getElementById("labelSlider").innerHTML = `0 / 0`;
+            logStatus("🗑 Liste supprimée.");
+        });
+    };
+
     document.getElementById("fileInput").onchange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
+
         const btn = document.getElementById("btnUpload");
         btn.innerHTML = `📄 ${file.name}`;
         btn.style.borderStyle = "solid";
         btn.style.background = "#e7f3ff !important";
+        document.getElementById("clearList").style.display = "block";
+
         const reader = new FileReader();
         reader.onload = (ev) => {
             const liste = ev.target.result.split(/[\n\r]+/).map(n => n.trim()).filter(n => n);
-            chrome.storage.local.set({ maListeSauvegardee: liste }, () => {
+            chrome.storage.local.set({ maListeSauvegardee: liste, dernierNomFichier: file.name }, () => {
                 listeAmisTotale = liste;
                 const slider = document.getElementById("sliderAmis");
                 slider.max = liste.length;
@@ -276,12 +301,17 @@ function updateButtonState(state) {
     }
 }
 
-function chargerListeInitial(barBtn) {
-    chrome.storage.local.get(['maListeSauvegardee'], (result) => {
+function chargerListeInitial() {
+    chrome.storage.local.get(['maListeSauvegardee', 'dernierNomFichier'], (result) => {
         if (result.maListeSauvegardee) {
             listeAmisTotale = result.maListeSauvegardee;
+            const nomFichier = result.dernierNomFichier || "Liste chargée";
             const btn = document.getElementById("btnUpload");
-            btn.innerHTML = `📄 Liste chargée (${listeAmisTotale.length})`;
+            btn.innerHTML = `📄 ${nomFichier}`;
+            btn.style.borderStyle = "solid";
+            btn.style.background = "#e7f3ff !important";
+            document.getElementById("clearList").style.display = "block";
+
             const slider = document.getElementById("sliderAmis");
             slider.max = listeAmisTotale.length;
             slider.value = Math.floor((listeAmisTotale.length * 2) / 3);
