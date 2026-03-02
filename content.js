@@ -1,5 +1,5 @@
 // Remplace cette URL par ton lien "RAW" de Gist ou Pastebin
-const URL_LISTE_AMIS = "https://github.com/justinFransolet/Maps-Extension.git";
+const URL_LISTE_AMIS = "https://gist.github.com/clement-lemlijn/378f0b8e17cbfd82f8b0655abf1f800d";
 
 async function recupererListeAmis() {
     try {
