@@ -1,14 +1,30 @@
-// Remplace cette URL par ton lien "RAW" de Gist ou Pastebin
 const URL_LISTE_AMIS = "https://gist.githubusercontent.com/clement-lemlijn/378f0b8e17cbfd82f8b0655abf1f800d/raw/facebook-liste-amis.txt";
+
+const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Configuration des vitesses (min_pause, max_pause en millisecondes)
+const VITESSE_PROFILES = {
+    "Lent": [60000, 90000],
+    "Moyen": [30000, 45000],
+    "Rapide": [1000, 5000],
+    "Extreme": [100, 1000]
+};
+
+const VITESSE_PAUSES = {
+    "Lent": [2500, 500],
+    "Moyen": [2500, 500, 1200],
+    "Rapide": [1000, 500, 500],
+    "Extreme": [200, 200, 500]
+};
+
+let isRunning = false;
+let isPaused = false;
+let currentIndex = 0;
 
 async function recupererListeAmis() {
     try {
-        console.log("☁️ Récupération de la liste en ligne...");
         const response = await fetch(URL_LISTE_AMIS);
         const texte = await response.text();
-
-        // On transforme le texte en tableau (sépare par ligne ou virgule)
-        // .filter(n => n) permet d'enlever les lignes vides
         return texte.split('\n').map(name => name.trim()).filter(n => n);
     } catch (error) {
         console.error("❌ Erreur de récupération :", error);
@@ -16,173 +32,142 @@ async function recupererListeAmis() {
     }
 }
 
-// 2. Fonction pour attendre
-const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-/**
- * DETECTION DE LA ZONE DE TEXTE
- */
 async function getCommentBox() {
     const selector = 'div[role="textbox"][contenteditable="true"]';
     let el = document.querySelector(selector);
-
     if (el) {
         el.focus();
-        el.click(); // Active l'éditeur Lexical de FB
-        await wait(500);
+        el.click();
+        await wait(800);
         return el;
     }
     return null;
 }
 
-/**
- * LOGIQUE PRINCIPALE
- */
-async function lancerLeBot() {
-    console.log("🚀 Initialisation du bot...");
-    await wait(2000);
-
+async function lancerAssistant(nbAmisParCom, vitesse) {
+    isRunning = true;
     const mesAmis = await recupererListeAmis();
+    const [minWait, maxWait] = VITESSE_PROFILES[vitesse];
+    const [pause1, pause2, pause3] = VITESSE_PAUSES[vitesse];
+    const btnStart = document.getElementById("startHelper");
 
-    // Boucle par paquets de 3
-    for (let i = 0; i < mesAmis.length; i += 3) {
-        let trio = mesAmis.slice(i, i + 3);
-        if (trio.length < 3) {
-            console.log("Fin de liste ou reste moins de 3 amis.");
-            break;
+    for (let i = currentIndex; i < mesAmis.length; i += nbAmisParCom) {
+        // GESTION DE L'ARRÊT COMPLET
+        if (!isRunning) {
+            currentIndex = 0;
+            updateButtonState("start");
+            return;
         }
+
+        // GESTION DE LA PAUSE
+        while (isPaused) {
+            await wait(1000);
+            if (!isRunning) return; // Si on arrête pendant une pause
+        }
+
+        currentIndex = i; // Sauvegarde l'index actuel
+        let groupe = mesAmis.slice(i, i + nbAmisParCom);
+        if (groupe.length < nbAmisParCom) break;
 
         let inputBox = await getCommentBox();
 
         if (inputBox) {
-            console.log(`💬 Préparation du commentaire : ${trio.join(', ')}`);
-
-            for (let ami of trio) {
-                // On insère le texte du tag
+            console.log(`💬 Commentaire : ${groupe.join(', ')}`);
+            for (let ami of groupe) {
                 document.execCommand('insertText', false, `@${ami}`);
-                await wait(2000); // Pause cruciale pour laisser FB charger la suggestion
-
-                // On simule Flèche Bas + Entrée pour valider le "Lien Bleu"
+                await wait(pause1);
                 inputBox.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
-                await wait(500);
+                await wait(pause2);
                 inputBox.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-                await wait(1000);
+                await wait(pause3);
             }
 
-            // Validation finale du commentaire
-            console.log("✅ Envoi du commentaire...");
             inputBox.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
 
-            // Pause aléatoire entre 35 et 65 secondes pour simuler un humain
-            let pause = Math.floor(Math.random() * (20000 - 15000) + 5000);
-            console.log(`⏱️ Pause de sécurité : ${Math.round(pause/1000)}s...`);
-            await wait(pause);
+            let pause = Math.floor(Math.random() * (maxWait - minWait) + minWait);
+            console.log(`⏱️ Pause : ${Math.round(pause/1000)}s...`);
+
+            // On découpe la grosse pause en petits morceaux de 0.1s pour pouvoir "Pause/Stop" instantanément
+            for(let p=0; p < pause/10000; p++) {
+                if (!isRunning || isPaused) break;
+                await wait(100);
+            }
         } else {
-            alert("Erreur : Impossible de trouver la zone de commentaire. Clique dedans une fois manuellement ?");
+            alert("Zone de texte introuvable.");
             break;
         }
     }
-    console.log("🏁 Bot terminé avec succès !");
+
+    alert("🏁 Assistant : Mission terminée !");
+    isRunning = false;
+    currentIndex = 0;
+    updateButtonState("start");
+}
+
+function updateButtonState(state) {
+    const btn = document.getElementById("startHelper");
+    const stopBtn = document.getElementById("stopHelper");
+
+    if (state === "running") {
+        btn.innerHTML = "⏸ PAUSE";
+        btn.style.background = "#f39c12";
+        stopBtn.style.display = "block";
+    } else if (state === "paused") {
+        btn.innerHTML = "▶ REPRENDRE";
+        btn.style.background = "#2ecc71";
+    } else {
+        btn.innerHTML = "LANCER";
+        btn.style.background = "#1877F2";
+        stopBtn.style.display = "none";
+    }
 }
 
 /**
- * INTERFACE UTILISATEUR (Bouton)
+ * INTERFACE
  */
-if (!document.getElementById("btn-bot-concours")) {
-    const btn = document.createElement("button");
-    btn.id = "btn-bot-concours";
-    btn.innerHTML = "🚀 LANCER BOT CONCOURS";
-    btn.style = "position:fixed; top:100px; left:20px; z-index:10000; padding:12px; background:#4267B2; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);";
+if (!document.getElementById("helper-container")) {
+    const container = document.createElement("div");
+    container.id = "helper-container";
+    container.style = "position:fixed; top:80px; left:20px; z-index:10000; padding:15px; background:#f0f2f5; border:1px solid #ddd; border-radius:10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-family: sans-serif; display: flex; flex-direction: column; gap: 10px; width: 200px;";
 
-    // Effet visuel au clic
-    btn.onclick = () => {
-        btn.style.background = "gray";
-        btn.disabled = true;
-        lancerLeBot();
+    container.innerHTML = `
+        <div style="font-weight:bold; color:#1877F2; text-align:center;">🏆 Contest Helper</div>
+        
+        <label style="font-size:11px; margin-bottom:-5px;">Amis par com :</label>
+        <input type="number" id="nbAmis" value="3" min="1" style="padding:5px; border-radius:5px; border:1px solid #ccc;">
+        
+        <label style="font-size:11px; margin-bottom:-5px;">Rapidité :</label>
+        <select id="selectVitesse" style="padding:5px; border-radius:5px; border:1px solid #ccc;">
+            <option value="Lent">Lent</option>
+            <option value="Moyen" selected>Moyen</option>
+            <option value="Rapide">Rapide</option>
+            <option value="Extreme">Extreme (très rapide)</option>
+        </select>
+
+        <button id="startHelper" style="padding:10px; background:#1877F2; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">LANCER</button>
+        <button id="stopHelper" style="display:none; padding:8px; background:#e74c3c; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">⏹ ARRÊTER</button>
+    `;
+
+    document.body.appendChild(container);
+
+    // LOGIQUE DU BOUTON PRINCIPAL (Lancer / Pause / Reprendre)
+    document.getElementById("startHelper").onclick = function() {
+        if (!isRunning) {
+            const nb = parseInt(document.getElementById("nbAmis").value);
+            const vit = document.getElementById("selectVitesse").value;
+            updateButtonState("running");
+            lancerAssistant(nb, vit);
+        } else {
+            isPaused = !isPaused;
+            updateButtonState(isPaused ? "paused" : "running");
+        }
     };
 
-    document.body.appendChild(btn);
+    // LOGIQUE DU BOUTON ARRÊTER
+    document.getElementById("stopHelper").onclick = function() {
+        isRunning = false;
+        isPaused = false;
+        updateButtonState("start");
+        console.log("⏹ Assistant stoppé manuellement.");
+    };
 }
-
-// async function getCommentBox() {
-//     // On essaie plusieurs sélecteurs au cas où
-//     const selectors = [
-//         'div[role="textbox"][aria-label*="commentaire"]',
-//         'div[role="textbox"][aria-label*="comment"]',
-//         'div[data-lexical-editor="true"]',
-//         'div[contenteditable="true"][role="textbox"]'
-//     ];
-//
-//     for (let selector of selectors) {
-//         let el = document.querySelector(selector);
-//         if (el) {
-//             console.log("Cible trouvée avec : " + selector);
-//             return el;
-//         }
-//     }
-//     return null;
-// }
-//
-// // Fonction pour "forcer" le focus et l'apparition du curseur
-// async function preparerZoneTexte(selector) {
-//     let el = document.querySelector(selector);
-//     if (el) {
-//         el.focus();
-//         el.click();
-//         await wait(500);
-//         return el;
-//     }
-//     return null;
-// }
-//
-// async function lancerLeBot() {
-//     console.log("Démarrage du bot dans 3 secondes...");
-//     await wait(3000);
-//
-//     // On boucle sur la liste par paquets de 3
-//     for (let i = 0; i < mesAmis.length; i += 3) {
-//         let trio = mesAmis.slice(i, i + 3);
-//         if (trio.length < 3) break;
-//
-//         // Trouver la zone de texte du commentaire
-//         let inputBox = await preparerZoneTexte('div[role="textbox"][aria-label*="commentaire"], div[role="textbox"]');
-//
-//         if (inputBox) {
-//             inputBox.focus();
-//             console.log(`Tentative de tag pour : ${trio.join(', ')}`);
-//
-//             for (let ami of trio) {
-//                 // On simule la frappe du @ et du nom
-//                 document.execCommand('insertText', false, `@${ami}`);
-//                 await wait(1500); // Temps pour que la liste de suggestions apparaisse
-//
-//                 // On simule "Flèche Bas" puis "Entrée" pour valider le tag bleu
-//                 inputBox.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
-//                 await wait(500);
-//                 inputBox.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-//                 await wait(1000);
-//             }
-//
-//             // Une fois les 3 amis mis, on valide le commentaire final
-//             console.log("Envoi du commentaire...");
-//             inputBox.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-//
-//             // PAUSE DE SÉCURITÉ : On attend entre 30 et 60 secondes avant le prochain
-//             let pause = Math.floor(Math.random() * (60000 - 30000) + 30000);
-//             console.log(`Pause de ${pause/1000}s pour éviter le ban...`);
-//             await wait(pause);
-//         } else {
-//             console.log("Zone de commentaire non trouvée. Es-tu sur la bonne page ?");
-//             break;
-//         }
-//     }
-//     console.log("Travail terminé !");
-// }
-//
-// // On ajoute un petit bouton flottant sur FB pour lancer le script manuellement
-// const btn = document.createElement("button");
-// btn.innerHTML = "🚀 LANCER BOT CONCOURS";
-// btn.style = "position:fixed;top:100px;left:20px;z-index:9999;padding:10px;background:red;color:white;border-radius:5px;cursor:pointer;";
-// document.body.appendChild(btn);
-//
-// btn.onclick = lancerLeBot;
