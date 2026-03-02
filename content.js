@@ -1,5 +1,20 @@
-// 1. Ta liste d'amis (à remplir proprement)
-const mesAmis = ["Justin Fransolet", "Justin Fransolet", "Justin Fransolet"];
+// Remplace cette URL par ton lien "RAW" de Gist ou Pastebin
+const URL_LISTE_AMIS = "https://github.com/justinFransolet/Maps-Extension.git";
+
+async function recupererListeAmis() {
+    try {
+        console.log("☁️ Récupération de la liste en ligne...");
+        const response = await fetch(URL_LISTE_AMIS);
+        const texte = await response.text();
+
+        // On transforme le texte en tableau (sépare par ligne ou virgule)
+        // .filter(n => n) permet d'enlever les lignes vides
+        return texte.split('\n').map(name => name.trim()).filter(n => n);
+    } catch (error) {
+        console.error("❌ Erreur de récupération :", error);
+        return [];
+    }
+}
 
 // 2. Fonction pour attendre
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -26,6 +41,8 @@ async function getCommentBox() {
 async function lancerLeBot() {
     console.log("🚀 Initialisation du bot...");
     await wait(2000);
+
+    const mesAmis = await recupererListeAmis();
 
     // Boucle par paquets de 3
     for (let i = 0; i < mesAmis.length; i += 3) {
