@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "FB Contest Helper",
   "short_name": "FB Helper",
-  "version": "1.1.9",
+  "version": "1.2",
   "description": "Automatisez vos tags de concours sur Facebook de manière intelligente et sécurisée.",
   "author": "Lemlijn Clément",
   "permissions": [
