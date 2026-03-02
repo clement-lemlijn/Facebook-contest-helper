@@ -1,5 +1,5 @@
 // Remplace cette URL par ton lien "RAW" de Gist ou Pastebin
-const URL_LISTE_AMIS = "https://gist.github.com/clement-lemlijn/378f0b8e17cbfd82f8b0655abf1f800d";
+const URL_LISTE_AMIS = "https://gist.githubusercontent.com/clement-lemlijn/378f0b8e17cbfd82f8b0655abf1f800d/raw/facebook-liste-amis.txt";
 
 async function recupererListeAmis() {
     try {
@@ -74,7 +74,7 @@ async function lancerLeBot() {
             inputBox.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
 
             // Pause aléatoire entre 35 et 65 secondes pour simuler un humain
-            let pause = Math.floor(Math.random() * (65000 - 35000) + 35000);
+            let pause = Math.floor(Math.random() * (20000 - 15000) + 5000);
             console.log(`⏱️ Pause de sécurité : ${Math.round(pause/1000)}s...`);
             await wait(pause);
         } else {
