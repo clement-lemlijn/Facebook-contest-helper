@@ -59,26 +59,21 @@ function insertTextLexical(el, text) {
 // --- CIBLAGE INTELLIGENT ---
 
 async function getCommentBox() {
-    // On récupère TOUTES les zones de texte éditables
     const textboxes = Array.from(document.querySelectorAll('div[role="textbox"][contenteditable="true"]'));
-
     if (textboxes.length === 0) return null;
 
-    // On cherche celle qui est la plus proche du centre vertical de l'écran (viewport)
     const midScreen = window.innerHeight / 2;
 
     let target = textboxes.reduce((prev, curr) => {
         const prevRect = prev.getBoundingClientRect();
         const currRect = curr.getBoundingClientRect();
-
         const prevDist = Math.abs((prevRect.top + prevRect.height / 2) - midScreen);
         const currDist = Math.abs((currRect.top + currRect.height / 2) - midScreen);
-
         return (currDist < prevDist) ? curr : prev;
     });
 
     if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' }); // Aligne le post au centre
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
         await wait(500);
         target.focus();
         target.dispatchEvent(new MouseEvent('click', {bubbles: true}));
@@ -116,7 +111,6 @@ async function lancerAssistant(nbAmisParCom, vitesse, nbATaguer) {
         let groupe = listeAmisATaguer.slice(i, i + nbAmisParCom);
         if (groupe.length < nbAmisParCom) break;
 
-        // On cherche la zone au centre de l'écran à CHAQUE commentaire
         let inputBox = await getCommentBox();
 
         if (inputBox) {
@@ -126,8 +120,6 @@ async function lancerAssistant(nbAmisParCom, vitesse, nbATaguer) {
                 if (!isRunning) return;
                 insertTextLexical(inputBox, `@${ami}`);
                 await wait(pause1);
-                // inputBox.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
-                // await wait(pause2);
                 inputBox.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
                 await wait(pause3);
             }
@@ -154,7 +146,7 @@ async function lancerAssistant(nbAmisParCom, vitesse, nbATaguer) {
     isRunning = false; currentIndex = 0; updateButtonState("start");
 }
 
-// --- INTERFACE (Inchangée) ---
+// --- INTERFACE ---
 
 if (!document.getElementById("helper-container")) {
     const container = document.createElement("div");
@@ -168,7 +160,7 @@ if (!document.getElementById("helper-container")) {
             <div id="comCount" style="font-size:10px; margin-top:5px; color:#666;">Commentaires : 0</div>
         </div>
         <input type="file" id="fileInput" accept=".txt" style="display:none;">
-        <button id="btnUpload" style="padding:8px; font-size:11px; cursor:pointer; background:#f0f2f5 !important; border:1px dashed #1877F2; border-radius:5px; color: #000 !important; width: 100%; font-weight: bold; box-sizing: border-box;">📁 Charger Liste .txt</button>
+        <button id="btnUpload" style="padding:8px; font-size:11px; cursor:pointer; background:#f0f2f5 !important; border:1px dashed #1877F2; border-radius:5px; color: #000 !important; width: 100%; font-weight: bold; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">📁 Charger Liste (.txt)</button>
         <hr style="border:0; border-top:1px solid #ccc; margin:5px 0;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <label style="font-size:11px; font-weight:bold;">Taguer :</label>
@@ -192,6 +184,10 @@ if (!document.getElementById("helper-container")) {
         </div>
         <button id="startHelper" style="padding:10px; background:#1877F2 !important; color:white !important; border:none; border-radius:5px; cursor:pointer; font-weight:bold; margin-top:5px; width:100%; box-sizing: border-box;">LANCER</button>
         <button id="stopHelper" style="display:none; padding:8px; background:#e74c3c !important; color:white !important; border:none; border-radius:5px; cursor:pointer; font-weight:bold; width:100%; box-sizing: border-box;">⏹ ARRÊTER</button>
+        
+        <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #eee; text-align: center; font-size: 9px; color: #999; font-style: italic;">
+            &copy; 2026 Lemlijn Clément
+        </div>
     `;
 
     document.body.appendChild(container);
@@ -204,6 +200,14 @@ if (!document.getElementById("helper-container")) {
     document.getElementById("btnUpload").onclick = () => document.getElementById("fileInput").click();
     document.getElementById("fileInput").onchange = (e) => {
         const file = e.target.files[0];
+        if (!file) return;
+
+        // MISE À JOUR DU TEXTE DU BOUTON
+        const btn = document.getElementById("btnUpload");
+        btn.innerHTML = `📄 ${file.name}`;
+        btn.style.borderStyle = "solid"; // Change le pointillé en ligne pleine pour valider l'action
+        btn.style.background = "#e7f3ff !important"; // Un léger bleu pour confirmer
+
         const reader = new FileReader();
         reader.onload = (e) => {
             const liste = e.target.result.split(/[\n\r]+/).map(n => n.trim()).filter(n => n);
