@@ -8,16 +8,16 @@ let listeAmisTotale = [];
 let listeAmisATaguer = [];
 
 const VITESSE_PROFILES = {
-    "Lent": [15000, 25000],
-    "Moyen": [5000, 8000],
-    "Rapide": [1000, 5000],
+    "Lent": [60000, 180000],
+    "Moyen": [30000, 75000],
+    "Rapide": [3000, 10000],
     "Extreme": [100, 1000]
 };
 
 const VITESSE_PAUSES = {
-    "Lent": [2500, 500, 1200],
-    "Moyen": [1000, 500, 500],
-    "Rapide": [800, 400, 500],
+    "Lent": [3000, 1000, 1500],
+    "Moyen": [2000, 800, 1000],
+    "Rapide": [1200, 400, 800],
     "Extreme": [400, 200, 500]
 };
 
@@ -99,6 +99,17 @@ async function lancerAssistant(nbAmisParCom, vitesse, nbATaguer) {
     const [pause1, pause2, pause3] = VITESSE_PAUSES[vitesse];
 
     for (let i = currentIndex; i < listeAmisATaguer.length; i += nbAmisParCom) {
+
+        // --- VERIFICATION DU BLOCAGE ---
+        if (detecterBlocage()) {
+            isRunning = false;
+            isPaused = false;
+            logStatus("⚠️ BLOCAGE FACEBOOK ! <br>L'assistant s'est arrêté pour protéger votre compte.", "#e74c3c");
+            updateButtonState("start");
+            alert("Facebook a bloqué l'action. L'assistant s'est arrêté par sécurité. Attendez quelques heures avant de recommencer.");
+            return; // On sort définitivement de la fonction
+        }
+
         if (!isRunning) { currentIndex = 0; logStatus("⏹ Arrêté.", "#e74c3c"); updateButtonState("start"); return; }
         while (isPaused) { await wait(1000); if (!isRunning) return; }
 
@@ -137,6 +148,22 @@ async function lancerAssistant(nbAmisParCom, vitesse, nbATaguer) {
     isRunning = false; currentIndex = 0; updateButtonState("start");
 }
 
+function detecterBlocage() {
+    // On cherche le texte exact que tu as fourni dans le HTML
+    const phraseBlocage = "Vous ne pouvez pas utiliser cette fonctionnalité pour le moment";
+
+    // On regarde dans tout le document si cette phrase existe
+    const estBloque = document.body.innerText.includes(phraseBlocage);
+
+    if (estBloque) {
+        console.error("🚨 BLOCAGE DETECTÉ ! Arrêt d'urgence.");
+        return true;
+    }
+    return false;
+}
+
+
+
 // --- INTERFACE ---
 
 if (!document.getElementById("helper-container")) {
@@ -174,8 +201,9 @@ if (!document.getElementById("helper-container")) {
             <div style="display:flex; flex-direction:column;">
                 <label style="font-size:10px; font-weight:bold;">Vitesse :</label>
                 <select id="selectVitesse" style="padding:5px; border-radius:5px; border:1px solid #ccc; width:100%; box-sizing: border-box;">
+                    <option value="Lent">Très lent</option>
                     <option value="Lent">Lent</option>
-                    <option value="Moyen" selected>Moyen</option>
+                    <option value="Moyen" selected>Moyen (recommandé)</option>
                     <option value="Rapide">Rapide</option>
                     <option value="Extreme">Extreme ⚡</option>
                 </select>
